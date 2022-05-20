@@ -94,15 +94,33 @@ ggplot(warming_new) +
 ```
 
 
-no_pulse <- lm(data = warming, year ~ warming_baseline)
-with_pulse <- lm(data = warming, year ~ warming_pulse)
+```{r}
+discount_damages <- function (rate, damage, time, present_time) {
+  NPV <- damage/(1+(rate/100)^(time - present_time))
+  return(NPV)
+}
 
-ggplot() +
-  geom_point(data = warming, aes(x = year, y = warming_baseline)) +
-  geom_abline(data = warming, )
-  jhg
+discount <- data_frame(rates = seq(0, 5, 0.1), SCC = seq(0, 5, 0.1))
+
+for(x in 1:length(discount$rate)){
+  discount$SCC[x] <- sum(discount_damages(discount$rates[x], warming$difference_perton, warming$year, 2021))
+}
+
+ggplot(data = discount) +
+  geom_point(aes(x = rates, y = SCC))
+
+
 ```
+Increasing the discount rate lowers the present value of the social cost of carbon. BITCH
 
+### Question 4
+The National Academies of Sciences, Engineering, and Medicine advised the government in a
+2017 report to use the Ramsey Rule when discounting within the SCC calculation:
+
+r = ρ + ηg
+
+Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from
+above.
 
 
 
