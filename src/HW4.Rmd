@@ -57,14 +57,42 @@ Use warming.csv and your estimated damage function to predict damages in each ye
 ```{r}
 # make damages function to use later
 damages_function <- function(warming) {
-  damages_new <- damages.lm$coefficient[1]*warming + damages.lm$coefficient[2]*(warming^2)
+  damages <- damages.lm$coefficient[1]*warming + damages.lm$coefficient[2]*(warming^2)
   return(damages)
 }
 
 warming_new <- warming %>% 
   mutate(damages_bl = damages_function(warming_baseline), damages_pulse = damages_function(warming_pulse)) %>% 
   mutate(difference = damages_pulse - damages_bl) %>% 
-  mutate(diffrence_perton = (damages_pulse - damages_bl) / 35000000000)
+  mutate(difference_perton = (damages_pulse - damages_bl) / 35000000000)
+
+```
+
+```{r}
+ggplot(warming_new) +
+  geom_line(aes(x = year, y = damages_bl), col = "red") +
+  theme_minimal() +
+  labs(x = "Year", y = "Damages", title = "Baseline Damages")
+
+ggplot(warming_new) + 
+  geom_line(aes(x = year, y = damages_pulse), col = "blue") +
+  theme_minimal() +
+  labs(x = "Year", y = "Damages", title = "Pulse Damgaes")
+
+
+ggplot(warming_new) +
+  geom_line(aes(x = year, y = difference), col = "green") +
+  theme_minimal() +
+  labs(x = "Year", y = "Damages", title = "Difference in damages between baseline and pulse")
+
+
+ggplot(warming_new) +
+  geom_line(aes(x = year, y = difference_perton), col = "pink") +
+  theme_minimal() +
+  labs(x = "Year", y = "Damages", title = "Difference in damages per ton of CO2")
+
+```
+
 
 no_pulse <- lm(data = warming, year ~ warming_baseline)
 with_pulse <- lm(data = warming, year ~ warming_pulse)
