@@ -17,17 +17,23 @@ library(here)
 damages <- read_csv(here("data", "damages.csv"))
 warming <- read_csv(here("data", "warming.csv"))
 ```
-### Background Info
-The first, “damages.csv” provides new model estimates of the annual total damages from climate change at different levels of warming (in degrees C). The second dataset, “warming.csv” contains estimates of a baseline future climate trajectory (in degrees C) until 2100, and a second trajectory that adds a one-time pulse of CO2 today to the atmosphere. The pulse is 35 billion tons of carbon, which is roughly equal to annual global emissions. You can think of this as a “small” one-time pulse in carbon emissions.
 
-### Questions
-1. Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Estimate a model with a zero intercept because damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data.
+### Background Info
+
+The first, "damages.csv" provides new model estimates of the annual total damages from climate change at different levels of warming (in degrees C). The second dataset, "warming.csv" contains estimates of a baseline future climate trajectory (in degrees C) until 2100, and a second trajectory that adds a one-time pulse of CO2 today to the atmosphere. The pulse is 35 billion tons of carbon, which is roughly equal to annual global emissions. You can think of this as a "small" one-time pulse in carbon emissions.
+
+### Question 1
+
+Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Estimate a model with a zero intercept because damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data.
 
 ```{r}
 damages_new <- damages %>%
   mutate(warming2 = warming^2)
 
 damages.lm <- lm(data = damages_new, damages ~ 0 + warming + warming2)
+
+alpha <- damages.lm$coefficient[2]
+beta <- damages.lm$coefficient[1]
 
 warming_seq <- damages$warming
 predict_damages <- predict(damages.lm, list(warming = warming_seq, warming2 = warming_seq^2))
@@ -42,4 +48,35 @@ ggplot() +
   labs(x = "Temperature (°C)", y = "Damages ($/°C)") +
   theme_minimal()
 ```
+
+Estimated formula: `r damages.lm$coefficient[1]`T + `r damages.lm$coefficient[2])`$T^2$
+
+### Question 2
+Use warming.csv and your estimated damage function to predict damages in each year under the baseline climate and the pulse scenario. Make four plots: (1) damages over time without the pulse, (2) damages over time with the pulse, (3) the difference in damages over time that arises from the pulse, and (4) the difference in damages over time from the pulse per ton of CO2 (you can assume that each ton of the pulse causes the same amount of damage).
+
+```{r}
+# make damages function to use later
+damages_function <- function(warming) {
+  damages_new <- damages.lm$coefficient[1]*warming + damages.lm$coefficient[2]*(warming^2)
+  return(damages)
+}
+
+warming_new <- warming %>% 
+  mutate(damages_bl = damages_function(warming_baseline), damages_pulse = damages_function(warming_pulse)) %>% 
+  mutate(difference = damages_pulse - damages_bl) %>% 
+  mutate(diffrence_perton = (damages_pulse - damages_bl) / 35000000000)
+
+no_pulse <- lm(data = warming, year ~ warming_baseline)
+with_pulse <- lm(data = warming, year ~ warming_pulse)
+
+ggplot() +
+  geom_point(data = warming, aes(x = year, y = warming_baseline)) +
+  geom_abline(data = warming, )
+```
+
+
+
+
+
+
 
