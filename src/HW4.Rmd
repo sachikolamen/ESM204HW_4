@@ -94,21 +94,23 @@ ggplot(warming_new) +
 ```
 
 
+##### WHATTTTT% IS GOING ON??A?SD>FA:LSDJFLAKDSF
+FUck you <3 
+
 ```{r}
 discount_damages <- function (rate, damage, time, present_time) {
   NPV <- damage/(1+(rate/100)^(time - present_time))
-  return(NPV)
+  return(PV)
 }
 
 discount <- data_frame(rates = seq(0, 5, 0.1), SCC = seq(0, 5, 0.1))
 
 for(x in 1:length(discount$rate)){
-  discount$SCC[x] <- sum(discount_damages(discount$rates[x], warming$difference_perton, warming$year, 2021))
+  discount$SCC[x] <- sum(discount_damages(discount$rates[x], warming_new$difference_perton, warming_new$year, 2021))
 }
 
 ggplot(data = discount) +
   geom_point(aes(x = rates, y = SCC))
-
 
 ```
 Increasing the discount rate lowers the present value of the social cost of carbon. BITCH
@@ -122,6 +124,20 @@ r = ρ + ηg
 Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from
 above.
 
+"The Ramsey rule states (approximately) that the optimal taxes cause every good to have the same proportional reduction in compensated demand. " - Google
+
+```{r}
+r <- (0.001 + 2*0.01) *100
+
+discount_r <- sum(discount_damages(r, warming_new$difference_perton, warming_new$year, 2021))
+
+ggplot(data = discount) + 
+  geom_point(aes(x = rates, y = SCC), col = "darkorchid") +
+  geom_point(aes(x = r, y = discount_r), color = "red")
+
+discount_damages(r, damage, time, present_time)
+
+```
 
 
 
