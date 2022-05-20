@@ -25,11 +25,25 @@ The first, “damages.csv” provides new model estimates of the annual total da
 
 ```{r}
 # first write a formula for the regression (we will use again later for cross validation)
-dam_reg <- warming ~ damages
 
-# use glm() generalized linear model -- set to binomial
-ad_chin_blr1 <- glm(formula = f1,
-                    data = adelie_chinstrap,
-                    family = "binomial")
+damages.lm <- lm(damages ~ warming, data = damage)
+damages.slope <- damages.lm$coefficient[2]
+damages.intercept <- damages.lm$coefficient[1]
+vector_damages <- seq(0, 20, length.out = 556)
+damage$damages_equation = damages.slope*(vector_damages) + damages.intercept
+
+baseline.lm <- lm(warming_baseline ~ year, data = warming)
+baseline.slope <- baseline.lm$coefficient[2]
+baseline.intercept <- baseline.lm$coefficients[1]
+vector_baseline <- seq(0, 4, length.out = 79)
+warming$baseline_equation = baseline.slope*(vector_baseline) + baseline.intercept
+
+
+pulse.lm <- lm(warming_pulse ~ year, data = warming)
+pulse.slope <- pulse.lm$coefficient[2]
+pulse.intercept <- pulse.lm$coefficients[1]
+vector_pulse <- seq(0, 4, length.out = 79)
+warming$pulse_equation = pulse.slope*(vector_pulse) + pulse.intercept
+
 ```
 
