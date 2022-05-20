@@ -100,6 +100,7 @@ with_pulse <- lm(data = warming, year ~ warming_pulse)
 ggplot() +
   geom_point(data = warming, aes(x = year, y = warming_baseline)) +
   geom_abline(data = warming, )
+  jhg
 ```
 
 
