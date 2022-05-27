@@ -150,55 +150,67 @@ Now suppose there are two possible climate policies that can be pursued. Policy 
 - What is the expected present value of damages up to 2100 under Policy B? 
 - Suppose undertaking Policy A costs zero and undertaking Policy B costs X. The total cost of a policy is the implementation cost plus expected damages. Make a plot of total cost of Policy A and total cost of Policy B against X. Suppose Congress wants to undertake the policy with the lower total cost. Use your graph to advise Congress. 
 
+### Policy A
+
+Expected present value for the business as usual scenario under Policy A up to 2100 were found to be  $2.10*10^{15}$ dollars 
+
+### Policy B 
+
+Expected present value for the immediate action scenario under Policy B up to 2100 were found to be $7.72 *10^{14}$ dollars
+
+```{r}
+discount_rate <- 2
+
+warming_policy <- warming_data %>% 
+  mutate(policy_a1 = warming_baseline,
+         policy_a2 = 1.5*warming_baseline,
+         policy_b = ifelse(year < 2050, policy_a2, 1.29)) %>% 
+  mutate(damages_a = quad_function(policy_a2)) %>% 
+  mutate(damages_b = quad_function(policy_b)) %>% 
+  mutate(future_years = year-2022) %>% 
+  mutate(discount_policy_a2 = damages_a/(1.02^future_years)) %>% 
+  mutate(discount_policy_b = damages_b/(1.02^future_years)) %>% 
+  mutate(discount_damages_bau = warming_baseline/1.02^future_years)
+
+#Expected value of damages for policy a and b given probability of 0.5 for policy a and certainty for policy b
+prob_policy_a <- 0.5*sum(warming_policy$discount_policy_a2) + 0.5*sum(warming_policy$discount_damages_bau)
+prob_policy_b <- c(sum(warming_policy$discount_policy_b))
+
+cost_a <- function(x){prob_policy_a}
+# B adds in the implementation cost (X) 
+cost_b <- function(x){prob_policy_b + x}
+# For the cost of b to equal the cost of a, implementation cost would have to be $2236574 billion: 
+intercept <- prob_policy_a - prob_policy_b
+
+```
+
+
+```{r}
+cost <- seq(0, 5e15, by = 1e12)
+cost_df <- data.frame(cost) %>% 
+  mutate(cost_policy_b = prob_policy_b + cost) %>% 
+  mutate(cost_policy_a = prob_policy_a) 
+
+```
+
+```{r}
+
+ggplot(data = cost_df) +
+ geom_line(aes(x = cost/1e12, y = cost_policy_a/1e12), color = "red") +
+  geom_line(aes(x = cost/1e12, y = cost_policy_b/1e12), color = "blue") +
+  scale_y_continuous(limits = c(0, 6000), n.breaks = 6) +
+  scale_x_continuous(limits = c(0, 5100), n.breaks = 5) +
+  geom_text(aes(x = 5100, y = 2100, label = "Policy A")) +
+  geom_text(aes(x = 5100, y = 6000, label = "Plicy B")) +
+  geom_text(aes(x = 1200, y = 6000, label = "X = 1200")) +
+  geom_vline(xintercept = intercept/1e12, linetype = "dashed", color = "darkorchid") +
+  theme(plot.background = element_rect(fill = "darkblue")) +
+  labs(title = "Policy Comparison", x = "Cost of Policy Implementation ", y = "Total Expected Cost") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+**Figure 5.** Cost of Policy Impmentation versus the Expected Total Cost for Policy A (red) and B (blue). X* represents the intercept and the inflection point where **below X*, Policy B is preferred, but above X, Policy A is preferred**. However, unless the implementation costs are greater than X = $1.03 x10^{15}$ dollars,  Congress should implement Policy B. 
 
 
 ## Question 6
 A risk averse society would prefer option b because it has guaranteed lower future damages relative to the high damage scenario of Option A which has a 50% likelihood of happening. Option A could potentially result in higher damages if the 1.5x baseline scenario occurs. Thus a risk averse society should favor option B.
-
-
-###############################
-
-
-```{r}
-SCC <- SCC %>% 
-  mutate(baseline_A_1.5 = pred_dam_fun(warming_baseline*1.5)) %>% 
-  mutate(PV_A_1.5 = baseline_A_1.5/((1.02)^(year-2022))) %>% 
-  mutate(PV_A_base = pred_base/((1.02)^(year-2022))) %>% 
-  mutate(policy_B_temp = ifelse(year < 2050, warming_baseline, 1.29)) %>% 
-  mutate(baseline_B = pred_dam_fun(policy_B_temp)) %>% 
-  mutate(PV_B_base = baseline_B/((1.02)^(year-2022)))
-policy_A_PV <- sum(SCC$PV_A_base)*.5 + sum(SCC$PV_A_1.5)*.5 # expected present value of damages under policy A
-policy_B_PV <- sum(SCC$PV_B_base) # expected present value of damages under policy B
-```
-
-```{r}
-imp_cost <- policy_A_PV - policy_B_PV # to get an estimate for cost
-potential_cost <- c(0, 1e15, 2e15, 3e15, 4e15, 5e15, 6e15, 7e15, 8e15, 9e15)
-cost.df <- data.frame(potential_cost)
-
-cost_A <- function(x){policy_A_PV}
-cost_B <- function(x){policy_B_PV + x}
-
-cost.compare <- cost.df %>% 
-  mutate(cost_a = cost_A(cost.df)) %>% 
-  mutate(cost_b = cost_B(cost.df))
-
-ggplot(data = cost.compare) + 
-  geom_line(aes(x = potential_cost, y = cost_a), color = "blue") + # policy A 
-  geom_line(aes(x = potential_cost, y = cost_b$potential_cost), color = "red")+  # policy B
-  labs(y = "Total Implementation Cost ($)",
-       x = "Potential Additional Cost ($)",
-       title = "Comparison of cost of Policy A v/s Policy B",
-       caption = "Figure 7: Comparison of costs of mitigation from Policy A to Policy B. 
-       The blue line indicates Policy A and the red line indicates Policy B")+
-    theme(plot.caption = element_text(hjust = 0.5),
-        axis.title.x = element_text(face = "bold"),
-        axis.title.y = element_text(face = "bold")) +
-  theme_minimal()
-```
-
-
-```{r}
- intercept <- function(x){policy_A_PV-(policy_B_PV+x)}
-tipping_point <- uniroot(intercept, c(1e15,2.5e15))$root # = 2.235e15
-```
