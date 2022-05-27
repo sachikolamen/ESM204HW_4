@@ -52,7 +52,7 @@ ggplot() +
 Estimated formula: `r damages.lm$coefficient[1]`T + `r damages.lm$coefficient[2])`$T^2$
 
 ### Question 2
-Use warming.csv and your estimated damage function to predict damages in each year under the baseline climate and the pulse scenario. Make four plots: (1) damages over time without the pulse, (2) damages over time with the pulse, (3) the difference in damages over time that arises from the pulse, and (4) the difference in damages over time from the pulse per ton of CO2 (you can assume that each ton of the pulse causes the same amount of damage).
+Use warming.csv and your estimated damage function to predict damages in each year under the baseline climate and the pulse scenario. Make four plots: (1) damages over time without the pulse, (2) damages over time with the pulse, (3) the difference in damages over time that arises from the pulse, and (4) the difference in damages over time from the pulse per ton of CO2 (you can assume that each ton of the pulse causes the same amount of damage). 
 
 ```{r}
 # make damages function to use later
@@ -66,16 +66,50 @@ warming_new <- warming %>%
   mutate(difference = damages_pulse - damages_bl) %>% 
   mutate(diffrence_perton = (damages_pulse - damages_bl) / 35000000000)
 
-no_pulse <- lm(data = warming, year ~ warming_baseline)
-with_pulse <- lm(data = warming, year ~ warming_pulse)
+##### WHATTTTT% IS GOING ON??A?SD>FA:LSDJFLAKDSF
+FUck you <3 
 
-ggplot() +
-  geom_point(data = warming, aes(x = year, y = warming_baseline)) +
-  geom_abline(data = warming, )
-  jhg
+```{r}
+discount_damages <- function (rate, damage, time, present_time) {
+  NPV <- damage/(1+(rate/100)^(time - present_time))
+  return(PV)
+}
+
+discount <- data_frame(rates = seq(0, 5, 0.1), SCC = seq(0, 5, 0.1))
+
+for(x in 1:length(discount$rate)){
+  discount$SCC[x] <- sum(discount_damages(discount$rates[x], warming_new$difference_perton, warming_new$year, 2021))
+}
+
+ggplot(data = discount) +
+  geom_point(aes(x = rates, y = SCC))
+
 ```
+Increasing the discount rate lowers the present value of the social cost of carbon. BITCH
 
+### Question 4
+The National Academies of Sciences, Engineering, and Medicine advised the government in a
+2017 report to use the Ramsey Rule when discounting within the SCC calculation:
 
+r = ρ + ηg
+
+Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from
+above.
+
+"The Ramsey rule states (approximately) that the optimal taxes cause every good to have the same proportional reduction in compensated demand. " - Google
+
+```{r}
+r <- (0.001 + 2*0.01) *100
+
+discount_r <- sum(discount_damages(r, warming_new$difference_perton, warming_new$year, 2021))
+
+ggplot(data = discount) + 
+  geom_point(aes(x = rates, y = SCC), col = "darkorchid") +
+  geom_point(aes(x = r, y = discount_r), color = "red")
+
+discount_damages(r, damage, time, present_time)
+
+```
 
 Question 3
 ```{r}
