@@ -1,0 +1,290 @@
+---
+title: 'Dr.EVIL Takes over the WORLD (HW 4)'
+author: "Sachiko (Versace) Lamen, Meghna Rao (Queen), Chase Tarr (TrackStarr)"
+date: "5/16/2022"
+output: 
+  html_document:
+downcute_theme: "chaos" 
+---
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(here)
+library(kableExtra)
+library(patchwork)
+
+```
+
+```{r}
+# Read in the data
+damages_data <- read_csv(here("data","damages.csv"))
+warming_data <- read_csv(here("data", "warming.csv"))
+```
+
+### Question 1
+
+Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Estimate a model with a zero intercept because damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data.
+
+$$ 
+Damages = -1.06 * 10^{12} (warming) + 1.93*10^{13} (warming^2)
+$$
+
+```{r, include = FALSE}
+# Create a linear regression model
+damages_data$warming_squared <- damages_data$warming^2
+quad_damage_model <- lm(damages ~ warming + warming_squared+ 0, data = damages_data)
+# summary(quad_damage_model)
+
+# Define function
+quad_function <- function(warming){
+  harm <- quad_damage_model$coefficients[1]*warming + quad_damage_model$coefficients[2]*warming^2
+  return(harm)
+}
+```
+
+```{r}
+# Create a function and scatter plot graph for damages. Use geom_smooth to create quadratic fit.
+ggplot(quad_damage_model, aes(warming, damages)) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title = 'Damage from warming',x = "Warming (°C)", y = "Total Damages ($)") +
+theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.background = element_rect(fill = 'pink', color = 'blue'))
+```
+
+
+### Question 2
+
+Use warming.csv and your estimated damage function to predict damages in each year under the baseline climate and the pulse scenario. Make four plots: 
+(1) damages over time without the pulse, 
+(2) damages over time with the pulse, 
+(3) the difference in damages over time that arises from the pulse, and 
+(4) the difference in damages over time from the pulse per ton of CO2 (you can assume that each ton of the pulse causes the same amount of damage). 
+
+```{r include = FALSE}
+
+## baseline
+warming_data$baseline_damage <- quad_function(warming_data$warming_baseline)
+
+## pulse
+warming_data$pulse_damage <- quad_function(warming_data$warming_pulse)
+
+## Difference
+warming_data$difference <- warming_data$pulse_damage - warming_data$baseline_damage
+
+## Difference in damages per ton
+warming_data$damage_per_ton_CO2 <-warming_data$difference/35e9
+
+```
+
+
+```{r}
+##  no pulse
+ggplot(data = warming_data) +
+  geom_point(aes(x = year, y = baseline_damage), color = "red") +
+  labs(title = "Damages: No Pulse", 
+       x = "Year", 
+       y = "Total Damages ($)") + 
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.background = element_rect(fill = 'blue', color = 'green'))
+
+## with pulse
+ggplot(data = warming_data) +
+  geom_point(aes(x = year, y = pulse_damage), color = 'blue') +
+  labs(title = "Damage: With Pulse", 
+       x = "Year",
+       y = "Total Damages ($)") +
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.background = element_rect(fill = 'orange', color = 'darkorchid'))
+
+## difference
+ggplot(data = warming_data) +
+  geom_point(aes(x = year, y = difference), color = "forestgreen") +
+  labs(title = "Difference in Damages", 
+       x = "Year",
+       y = "Total Damages ($)") +
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.background = element_rect(fill = 'yellow', color = 'pink'))
+
+## difference with pulse (per ton of CO_2_)
+ggplot(data = warming_data) +
+  geom_point(aes(x = year, y = damage_per_ton_CO2), color = "darkorange") +
+  labs(title = "Difference in Damages per ton CO2", 
+       x = "Year",
+       y = "Total Damages ($)") +
+  theme_minimal()  +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.background = element_rect(fill = 'gray', color = 'purple'))
+```
+
+### Question 3
+
+The SCC is the present discounted value of the stream of future damages caused by one additional ton of CO2. The Obama Administration used a discount rate of 3% to discount damages. Recently, New York State used a discount rate of 2%. Calculate and make a plot of the SCC (y-axis) against the discount rate (x-axis) for a reasonable range of discount rates. Explain the intuition for how the discount rate affects the SCC.
+
+- As discount decreases, NPV of the SCC increases
+
+```{r, include = FALSE}
+npv_function <- function(future_damage, year, rate, reference_year) {
+  output = future_damage/(1+rate/100)^(year-reference_year)
+  return(output)
+}
+
+# Create columns for discount rates of 2%-10%
+npv_damages_df <- data.frame(year = warming_data$year) %>% 
+  mutate(damage_per_ton_CO2 = warming_data$damage_per_ton_CO2,
+         discounted_2_percent = npv_function(damage_per_ton_CO2, year, 2, 2022),
+         discounted_3_percent = npv_function(damage_per_ton_CO2, year, 3, 2022),
+         discounted_4_percent = npv_function(damage_per_ton_CO2, year, 4, 2022),
+         discounted_5_percent = npv_function(damage_per_ton_CO2, year, 5, 2022),
+         discounted_6_percent = npv_function(damage_per_ton_CO2, year, 6, 2022),
+         discounted_7_percent = npv_function(damage_per_ton_CO2, year, 7, 2022),
+         discounted_8_percent = npv_function(damage_per_ton_CO2, year, 8, 2022),
+         discounted_9_percent = npv_function(damage_per_ton_CO2, year, 9, 2022),
+         discounted_10_percent = npv_function(damage_per_ton_CO2, year, 10, 2022)) 
+
+
+# Create a new data frame (total damages) which sums the individual discount rates from 2% - 10%
+total_damages_df <- data.frame(rates = c(2:10), total_discount_sum = c(sum(npv_damages_df$discounted_2_percent),
+                                                                       sum(npv_damages_df$discounted_3_percent),
+                                                                       sum(npv_damages_df$discounted_4_percent),
+                                                                       sum(npv_damages_df$discounted_5_percent),
+                                                                       sum(npv_damages_df$discounted_6_percent),
+                                                                       sum(npv_damages_df$discounted_7_percent),
+                                                                       sum(npv_damages_df$discounted_8_percent),
+                                                                       sum(npv_damages_df$discounted_9_percent),
+                                                                       sum(npv_damages_df$discounted_10_percent)))
+
+```
+ 
+
+```{r, }
+ggplot(data = total_damages_df) +
+  geom_point(aes(x=rates, y=total_discount_sum), color = "orange") +
+  labs(title = "SCC at varying discount rates",
+       x = "Discount Rate (%)",
+       y = "SCC") +
+  theme_minimal() +
+  theme(plot.background = element_rect(fill = "cyan")) +
+  theme(panel.background = element_rect(fill = "gold"))
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+**Figure 3.** Social Cost of Carbon (SCC) at varying discount rates (2-10%).
+ 
+
+### Question 4
+
+The National Academies of Sciences, Engineering, and Medicine advised the government in a 2017 report to use the Ramsey Rule when discounting within the SCC calculation:
+
+r = ρ + ηg
+
+Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from above.
+
+
+```{r, include = FALSE}
+p <- 0.001
+n <- 2
+g <- 0.01
+
+ramsey_rule_equation <- (p + n*g)*100
+
+ramsey_df <- data.frame()
+
+ramsey_damages <- npv_function(npv_damages_df$damage_per_ton_CO2, npv_damages_df$year, ramsey_rule_equation, 2022)
+
+ramsey_discount_damages <- sum(ramsey_damages)
+```
+
+```{r}
+ggplot(data = total_damages_df) +
+  geom_smooth(aes(x=rates, y=total_discount_sum), color = 'red') +
+  geom_point(x = ramsey_rule_equation, y = ramsey_discount_damages, color = "blue") +
+  labs(x = "Discount Rate (%)",
+       y = "Social Cost of Carbon") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'hotpink', color = 'purple')) +
+  theme(plot.background = element_rect(fill = "yellow"))
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+**Figure 4.** Social Cost of Carbon compared with different discount rates (2-10%).
+
+### Question 5
+
+Now suppose there are two possible climate policies that can be pursued. Policy A is business as usual and Policy B is to take immediate and strong action on climate change.
+
+-   What is the expected present value of damages up to 2100 under Policy A? $2.10*10^{15}$ \$
+
+-   What is the expected present value of damages up to 2100 under Policy B? $7.72*10^{14}$ \$
+
+-   Suppose undertaking Policy A costs zero and undertaking Policy B costs X. The total cost of a policy is the implementation cost plus expected damages. Make a plot of total cost of Policy A and total cost of Policy B against X. Suppose Congress wants to undertake the policy with the lower total cost. Use your graph to advise Congress.
+
+We would advise Congress to implement policy A if the cost of implementation is less than $1.2*10^{15}$ dollars
+
+
+```{r, include = FALSE}
+discount_rate <- 2
+
+warming_policy <- warming_data %>% 
+  mutate(policy_a1 = warming_baseline,
+         policy_a2 = 1.5*warming_baseline,
+         policy_b = ifelse(year < 2050, policy_a2, 1.29)) %>% 
+  mutate(damages_a = quad_function(policy_a2)) %>% 
+  mutate(damages_b = quad_function(policy_b)) %>% 
+  mutate(future_years = year-2022) %>% 
+  mutate(discount_policy_a2 = damages_a/(1.02^future_years)) %>% 
+  mutate(discount_policy_b = damages_b/(1.02^future_years)) %>% 
+  mutate(discount_damages_bau = warming_baseline/1.02^future_years)
+
+
+prob_policy_a <- 0.5*sum(warming_policy$discount_policy_a2) + 0.5*sum(warming_policy$discount_damages_bau)
+prob_policy_b <- c(sum(warming_policy$discount_policy_b))
+
+cost_a <- function(x){prob_policy_a}
+
+cost_b <- function(x){prob_policy_b + x}
+
+intercept <- prob_policy_a - prob_policy_b
+
+cost <- seq(0, 5e15, by = 1e12)
+cost_df <- data.frame(cost) %>% 
+  mutate(cost_policy_b = prob_policy_b + cost) %>% 
+  mutate(cost_policy_a = prob_policy_a) 
+
+```
+
+```{r}
+
+ggplot(data = cost_df) +
+ geom_line(aes(x = cost/1e12, y = cost_policy_a/1e12), color = "orange") +
+  geom_line(aes(x = cost/1e12, y = cost_policy_b/1e12), color = "green") +
+  scale_y_continuous(limits = c(0, 6000), n.breaks = 6) +
+  scale_x_continuous(limits = c(0, 5100), n.breaks = 5) +
+  geom_text(aes(x = 5100, y = 2100, label = "A")) +
+  geom_text(aes(x = 5100, y = 6000, label = "B")) +
+  geom_text(aes(x = 1200, y = 6000, label = "X = 1200")) +
+  geom_vline(xintercept = intercept/1e12, linetype = "dashed", color = "darkorchid") +
+  labs(x = "Cost of Implementation ", y = "Total Expected Cost") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(panel.background = element_rect(fill = 'yellow', color = 'hotpink'))
+  
+  
+```
+
+**Figure 5.** Cost of implementation for policy A (orange) and policy B (green).
+### Question 6
+
+Now suppose that society is risk averse. How do you think this would change your advice to Congress?
+
+We would reccomend that Congress use policy B. The benefits of reduced climate change outweigh the cost of implementing the policy. Option B guarantees lower future damages compared to the higher damage potential of Policy A. However, if the cost of implementing policy B is greater than $1.2*10^{15}$ dollars then Congress has to make a game time decision.
+
+![I'll destroy the planet if you dont give me 1.2 QUADRILLION DOLLARS!](images/Austin-Powers-Mike-Myers-as-Dr-Evil-900x509.jpg) 
