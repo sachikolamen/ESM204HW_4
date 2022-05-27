@@ -8,19 +8,18 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(dplyr)
 library(janitor)
 library(here)
+library(kableExtra)
+library(patchwork)
 library(scales)
 library(equatiomatic)
-library(kableExtra)
-library(dplyr)
-library(patchwork)
-# options(scipen = 99)
 ```
 
 ### Question 1
 
-Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Estimate a model with a zero intercept because damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data. 
+Using damages.csv, estimate a quadratic damage function relating the dollar value of damages to the change in global mean temperature. Estimate a model with a zero intercept because damages by construction must equal zero when there is no climate change. Plot your estimated damage function, overlaid with a scatterplot of the underlying data.
 
 ```{r}
 ## read in data
@@ -48,9 +47,9 @@ stat_function(fun = pred_dam_fun, color = "red") +
   theme_minimal()
 ```
 
-### Question 2 
+### Question 2
 
-Use warming.csv and your estimated damage function to predict damages in each year under the baseline climate and the pulse scenario. Make four plots: (1) damages over time without the pulse, (2) damages over time with the pulse, (3) the difference in damages over time that arises from the pulse, and (4) the difference in damages over time from the pulse per ton of CO2 (you can assume that each ton of the pulse causes the same amount of damage). 
+Use warming.csv and your estimated damage function to predict damages in each year under the baseline climate and the pulse scenario. Make four plots: (1) damages over time without the pulse, (2) damages over time with the pulse, (3) the difference in damages over time that arises from the pulse, and (4) the difference in damages over time from the pulse per ton of CO2 (you can assume that each ton of the pulse causes the same amount of damage).
 
 ```{r}
 warming <- warming %>% 
@@ -59,7 +58,6 @@ warming <- warming %>%
   mutate(diff_of_pulse = pred_pulse - pred_base) %>% 
   mutate(damage_per_ton = diff_of_pulse/pulse)
 ```
-
 
 ```{r}
 ggplot(data = warming, aes(x = year, y = pred_base)) +
@@ -90,9 +88,11 @@ ggplot(data = warming, aes(x = year, y = damage_per_ton)) +
        title = "Fig 5: Difference in Damages over time from the Pulse per ton of CO2") +
   theme_minimal()
 ```
+
 ### Question 3
 
-The SCC is the present discounted value of the stream of future damages caused by one additional ton of CO2. The Obama Administration used a discount rate of 3% to discount damages. Recently, New York State used a discount rate of 2%. Calculate and make a plot of the SCC (y-axis) against the discount rate (x-axis) for a reasonable range of discount rates. Explain the intuition for how the discount rate affects the SCC. 
+The SCC is the present discounted value of the stream of future damages caused by one additional ton of CO2. The Obama Administration used a discount rate of 3% to discount damages. Recently, New York State used a discount rate of 2%. Calculate and make a plot of the SCC (y-axis) against the discount rate (x-axis) for a reasonable range of discount rates. Explain the intuition for how the discount rate affects the SCC.
+
 ```{r}
 SCC <- warming %>% 
   mutate(dr_01 = damage_per_ton/((1 + .01)^(year-2022))) %>% 
@@ -123,13 +123,13 @@ caption = "Fig 6: SCC over a Range of Different Discount Rates (1% to 10%)")+
         axis.title.y = element_text(face = "bold"))
 ```
 
-### Question 4 
+### Question 4
 
-The National Academies of Sciences, Engineering, and Medicine advised the government in a 2017 report to use the Ramsey Rule when discounting within the SCC calculation: 
+The National Academies of Sciences, Engineering, and Medicine advised the government in a 2017 report to use the Ramsey Rule when discounting within the SCC calculation:
 
-r = ρ + ηg 
+r = ρ + ηg
 
-Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from above. 
+Using ρ = 0.001, η = 2, and g = 0.01, what is the SCC? Locate this point on your graph from above.
 
 ```{r}
 # r  = p + ng
@@ -144,24 +144,20 @@ dr_rr_sum <- c(sum(SCC$dr_rr)) # = 71.354
 
 ### Question 5
 
-Now suppose there are two possible climate policies that can be pursued. Policy A is business as usual and Policy B is to take immediate and strong action on climate change. 
+Now suppose there are two possible climate policies that can be pursued. Policy A is business as usual and Policy B is to take immediate and strong action on climate change.
 
-- What is the expected present value of damages up to 2100 under Policy A? 
-- What is the expected present value of damages up to 2100 under Policy B? 
-- Suppose undertaking Policy A costs zero and undertaking Policy B costs X. The total cost of a policy is the implementation cost plus expected damages. Make a plot of total cost of Policy A and total cost of Policy B against X. Suppose Congress wants to undertake the policy with the lower total cost. Use your graph to advise Congress. 
+-   What is the expected present value of damages up to 2100 under Policy A? $2.10*10^{15}$ \$
 
-### Policy A
+-   What is the expected present value of damages up to 2100 under Policy B? $7.72*10^{14}$ \$
 
-Expected present value for the business as usual scenario under Policy A up to 2100 were found to be  $2.10*10^{15}$ dollars 
+-   Suppose undertaking Policy A costs zero and undertaking Policy B costs X. The total cost of a policy is the implementation cost plus expected damages. Make a plot of total cost of Policy A and total cost of Policy B against X. Suppose Congress wants to undertake the policy with the lower total cost. Use your graph to advise Congress.
 
-### Policy B 
-
-Expected present value for the immediate action scenario under Policy B up to 2100 were found to be $7.72 *10^{14}$ dollars
+We would advise Congress to implement policy A if the cost of implementation is less than $1.2*10^{15}$ dollars
 
 ```{r}
-discount_rate <- 2
+discount_rate2 <- 2 
 
-warming_policy <- warming_data %>% 
+warming_policy <- warming %>% 
   mutate(policy_a1 = warming_baseline,
          policy_a2 = 1.5*warming_baseline,
          policy_b = ifelse(year < 2050, policy_a2, 1.29)) %>% 
@@ -172,18 +168,19 @@ warming_policy <- warming_data %>%
   mutate(discount_policy_b = damages_b/(1.02^future_years)) %>% 
   mutate(discount_damages_bau = warming_baseline/1.02^future_years)
 
-#Expected value of damages for policy a and b given probability of 0.5 for policy a and certainty for policy b
+
 prob_policy_a <- 0.5*sum(warming_policy$discount_policy_a2) + 0.5*sum(warming_policy$discount_damages_bau)
+
 prob_policy_b <- c(sum(warming_policy$discount_policy_b))
 
 cost_a <- function(x){prob_policy_a}
-# B adds in the implementation cost (X) 
+
+
 cost_b <- function(x){prob_policy_b + x}
-# For the cost of b to equal the cost of a, implementation cost would have to be $2236574 billion: 
+
 intercept <- prob_policy_a - prob_policy_b
 
 ```
-
 
 ```{r}
 cost <- seq(0, 5e15, by = 1e12)
@@ -201,16 +198,21 @@ ggplot(data = cost_df) +
   scale_y_continuous(limits = c(0, 6000), n.breaks = 6) +
   scale_x_continuous(limits = c(0, 5100), n.breaks = 5) +
   geom_text(aes(x = 5100, y = 2100, label = "Policy A")) +
-  geom_text(aes(x = 5100, y = 6000, label = "Plicy B")) +
+  geom_text(aes(x = 5100, y = 6000, label = "Plicy B furgeson")) +
   geom_text(aes(x = 1200, y = 6000, label = "X = 1200")) +
   geom_vline(xintercept = intercept/1e12, linetype = "dashed", color = "darkorchid") +
   theme(plot.background = element_rect(fill = "darkblue")) +
+  theme(panel.background = element_rect(fill = "pink")) +
   labs(title = "Policy Comparison", x = "Cost of Policy Implementation ", y = "Total Expected Cost") +
   theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
-**Figure 5.** Cost of Policy Impmentation versus the Expected Total Cost for Policy A (red) and B (blue). X* represents the intercept and the inflection point where **below X*, Policy B is preferred, but above X, Policy A is preferred**. However, unless the implementation costs are greater than X = $1.03 x10^{15}$ dollars,  Congress should implement Policy B. 
+**Figure 5.** Comparison of implementation costs for policy A (red) and B (blue).
 
+### Question 6
 
-## Question 6
-A risk averse society would prefer option b because it has guaranteed lower future damages relative to the high damage scenario of Option A which has a 50% likelihood of happening. Option A could potentially result in higher damages if the 1.5x baseline scenario occurs. Thus a risk averse society should favor option B.
+Now suppose that society is risk averse. How do you think this would change your advice to Congress?
+
+We would reccomend that Congress use policy B. The benefits of reduced climate change outweigh the cost of implementing the policy. Option B guarantees lower future damages compared to the higher damage potential of Policy A. However, if the cost of implementing policy B is greater than $1.2*10^{15}$ dollars then Congress has to make a game time decision.
+
+![I'll destroy the planet if you dont give me 1.2 QUADRILLION DOLLARS!](images/Austin-Powers-Mike-Myers-as-Dr-Evil-900x509.jpg) 
